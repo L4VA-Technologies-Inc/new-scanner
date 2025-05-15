@@ -55,45 +55,45 @@ const router = Router();
 router.post('/', apiKeyAuth, requirePermission('write'), async (req: Request, res: Response) => {
   try {
     const { name, url, secret, event_types, headers } = req.body;
-    
+
     if (!name || !url || !event_types || !Array.isArray(event_types) || event_types.length === 0) {
       return res.status(400).json({ error: 'Name, URL, and at least one event type are required' });
     }
-    
+
     // Validate URL format
     try {
       new URL(url);
     } catch (error) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
-    
+
     // Validate event types
     const validEventTypes = Object.values(EventType);
     const invalidEventTypes = event_types.filter(type => !validEventTypes.includes(type as EventType));
-    
+
     if (invalidEventTypes.length > 0) {
-      return res.status(400).json({ 
-        error: 'Invalid event types', 
+      return res.status(400).json({
+        error: 'Invalid event types',
         invalid_types: invalidEventTypes,
         valid_types: validEventTypes
       });
     }
-    
+
     // Create the webhook
     const result = await query(
       `INSERT INTO webhooks (name, url, secret, event_types, headers, created_by)
-       VALUES ($1, $2, $3, $4::text[], $5, $6)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6)
        RETURNING id, name, url, event_types, created_at`,
       [
         name,
         url,
         secret || null,
-        event_types,
+        JSON.stringify(event_types),
         headers ? JSON.stringify(headers) : null,
         (req as AuthenticatedRequest).apiKey?.id
       ]
     );
-    
+
     logger.info(`Webhook registered: ${name} (${url})`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -146,7 +146,7 @@ router.get('/', apiKeyAuth, async (req: Request, res: Response) => {
        ORDER BY created_at DESC`,
       []
     );
-    
+
     res.json(result.rows);
   } catch (error) {
     logger.error('Error listing webhooks:', error);
@@ -205,21 +205,21 @@ router.put('/:webhookId', apiKeyAuth, requirePermission('write'), async (req: Re
   try {
     const { webhookId } = req.params;
     const { name, url, secret, event_types, headers, is_active } = req.body;
-    
+
     // Build update fields and values
     const updateFields = [];
     const values = [];
     let paramIndex = 1;
-    
+
     if (name !== undefined) {
       updateFields.push(`name = $${paramIndex++}`);
       values.push(name);
     }
-    
+
     if (url !== undefined) {
       updateFields.push(`url = $${paramIndex++}`);
       values.push(url);
-      
+
       // Validate URL format
       try {
         new URL(url);
@@ -227,50 +227,50 @@ router.put('/:webhookId', apiKeyAuth, requirePermission('write'), async (req: Re
         return res.status(400).json({ error: 'Invalid URL format' });
       }
     }
-    
+
     if (secret !== undefined) {
       updateFields.push(`secret = $${paramIndex++}`);
       values.push(secret || null);
     }
-    
+
     if (event_types !== undefined) {
       if (!Array.isArray(event_types) || event_types.length === 0) {
         return res.status(400).json({ error: 'At least one event type is required' });
       }
-      
+
       // Validate event types
       const validEventTypes = Object.values(EventType);
       const invalidEventTypes = event_types.filter(type => !validEventTypes.includes(type as EventType));
-      
+
       if (invalidEventTypes.length > 0) {
-        return res.status(400).json({ 
-          error: 'Invalid event types', 
+        return res.status(400).json({
+          error: 'Invalid event types',
           invalid_types: invalidEventTypes,
           valid_types: validEventTypes
         });
       }
-      
+
       updateFields.push(`event_types = $${paramIndex++}::text[]`);
       values.push(event_types);
     }
-    
+
     if (headers !== undefined) {
       updateFields.push(`headers = $${paramIndex++}`);
       values.push(headers ? JSON.stringify(headers) : null);
     }
-    
+
     if (is_active !== undefined) {
       updateFields.push(`is_active = $${paramIndex++}`);
       values.push(is_active);
     }
-    
+
     if (updateFields.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
-    
+
     // Add webhook ID to values
     values.push(webhookId);
-    
+
     // Update the webhook
     const result = await query(
       `UPDATE webhooks 
@@ -279,11 +279,11 @@ router.put('/:webhookId', apiKeyAuth, requirePermission('write'), async (req: Re
        RETURNING id, name, url, event_types, created_at, is_active`,
       values
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Webhook not found' });
     }
-    
+
     logger.info(`Webhook updated: ${webhookId}`);
     res.json(result.rows[0]);
   } catch (error) {
@@ -321,17 +321,17 @@ router.put('/:webhookId', apiKeyAuth, requirePermission('write'), async (req: Re
 router.delete('/:webhookId', apiKeyAuth, requirePermission('write'), async (req: Request, res: Response) => {
   try {
     const { webhookId } = req.params;
-    
+
     // Mark webhook as inactive (don't actually delete it)
     const result = await query(
       'UPDATE webhooks SET is_active = false WHERE id = $1 RETURNING id',
       [webhookId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Webhook not found' });
     }
-    
+
     logger.info(`Webhook deleted: ${webhookId}`);
     res.status(204).end();
   } catch (error) {
@@ -370,28 +370,28 @@ router.post('/:webhookId/test', apiKeyAuth, async (req: Request, res: Response) 
   try {
     const { webhookId } = req.params;
     const { event_type = EventType.TRANSACTION_RECEIVED } = req.body;
-    
+
     // Get webhook details
     const webhookResult = await query(
       'SELECT * FROM webhooks WHERE id = $1 AND is_active = true',
       [webhookId]
     );
-    
+
     if (webhookResult.rows.length === 0) {
       return res.status(404).json({ error: 'Webhook not found or not active' });
     }
-    
+
     const webhook = webhookResult.rows[0];
-    
+
     // Check if webhook supports the test event type
     const webhookEventTypes = webhook.event_types;
     if (!webhookEventTypes.includes(event_type)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: `Webhook does not support event type: ${event_type}`,
-        supported_types: webhookEventTypes 
+        supported_types: webhookEventTypes
       });
     }
-    
+
     // Create test payload
     const testPayload = {
       id: crypto.randomUUID(),
@@ -403,7 +403,7 @@ router.post('/:webhookId/test', apiKeyAuth, async (req: Request, res: Response) 
         webhook_id: webhookId
       }
     };
-    
+
     // Sign payload if webhook has a secret
     let signature = '';
     if (webhook.secret) {
@@ -412,7 +412,7 @@ router.post('/:webhookId/test', apiKeyAuth, async (req: Request, res: Response) 
         .update(JSON.stringify(testPayload))
         .digest('hex');
     }
-    
+
     // Prepare headers
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -423,20 +423,20 @@ router.post('/:webhookId/test', apiKeyAuth, async (req: Request, res: Response) 
       'X-Delivery-Timestamp': new Date().toISOString(),
       'X-Test-Delivery': 'true'
     };
-    
+
     if (signature) {
       headers['X-Webhook-Signature'] = signature;
     }
-    
+
     // Add custom headers if defined
     if (webhook.headers) {
       Object.assign(headers, webhook.headers);
     }
-    
+
     try {
       // Send the test webhook
       const response = await axios.post(webhook.url, testPayload, { headers, timeout: 10000 });
-      
+
       // Return the test results
       res.json({
         success: true,
@@ -448,7 +448,7 @@ router.post('/:webhookId/test', apiKeyAuth, async (req: Request, res: Response) 
           payload: testPayload
         }
       });
-      
+
       logger.info(`Test webhook delivery to ${webhook.url} succeeded with status ${response.status}`);
     } catch (error: unknown) {
       // Return error details
@@ -464,7 +464,7 @@ router.post('/:webhookId/test', apiKeyAuth, async (req: Request, res: Response) 
           payload: testPayload
         }
       });
-      
+
       logger.warn(`Test webhook delivery to ${webhook.url} failed: ${(error as Error).message}`);
     }
   } catch (error: unknown) {

@@ -64,28 +64,28 @@ const router = Router();
 router.post('/addresses', apiKeyAuth, requirePermission('write'), async (req: Request, res: Response) => {
   try {
     const { address, name, description } = req.body;
-    
+
     if (!address) {
       return res.status(400).json({ error: 'Address is required' });
     }
-    
+
     // Validate the address by checking if it exists on the blockchain
     try {
       await blockfrostService.getAddressInfo(address);
     } catch (error) {
       return res.status(400).json({ error: 'Invalid Cardano address' });
     }
-    
+
     // Check if address is already being monitored
     const existingResult = await query(
       'SELECT id FROM monitored_addresses WHERE address = $1',
       [address]
     );
-    
+
     if (existingResult.rows.length > 0) {
       return res.status(409).json({ error: 'Address is already being monitored', id: existingResult.rows[0].id });
     }
-    
+
     // Add the address to monitoring
     const result = await query(
       `INSERT INTO monitored_addresses (address, name, description, created_by)
@@ -98,7 +98,7 @@ router.post('/addresses', apiKeyAuth, requirePermission('write'), async (req: Re
         (req as AuthenticatedRequest).apiKey?.id
       ]
     );
-    
+
     logger.info(`Address added to monitoring: ${address}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -154,11 +154,57 @@ router.get('/addresses', apiKeyAuth, async (req: Request, res: Response) => {
        ORDER BY created_at DESC`,
       []
     );
-    
+
     res.json(result.rows);
   } catch (error) {
     logger.error('Error listing monitored addresses:', error);
     res.status(500).json({ error: 'Failed to list monitored addresses' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/monitoring/addresses/{addressId}:
+ *   get:
+ *     summary: Get monitoring address by id
+ *     description: Select address by id
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: path
+ *         name: addressId
+ *         required: true
+ *         description: ID of the monitored address
+ *         schema:
+ *           type: string
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       204:
+ *         description: Address selected from monitoring successfully
+ *       404:
+ *         description: Monitored address not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/addresses/:addressId', apiKeyAuth, async (req: Request, res: Response) => {
+  try {
+    const { addressId } = req.params;
+
+    // Mark address as inactive (don't actually delete it)
+    const result = await query(
+        'SELECT * FROM monitored_addresses WHERE address = $1;',
+        [addressId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Monitored address not found' });
+    }
+
+    logger.info(`Address found : ${addressId}`);
+    res.status(204).end();
+  } catch (error) {
+    logger.error(`Error selecting ${req.params.addressId} from monitoring:`, error);
+    res.status(500).json({ error: 'Failed to select address from monitoring' });
   }
 });
 
@@ -191,17 +237,17 @@ router.get('/addresses', apiKeyAuth, async (req: Request, res: Response) => {
 router.delete('/addresses/:addressId', apiKeyAuth, requirePermission('write'), async (req: Request, res: Response) => {
   try {
     const { addressId } = req.params;
-    
+
     // Mark address as inactive (don't actually delete it)
     const result = await query(
       'UPDATE monitored_addresses SET is_active = false WHERE id = $1 RETURNING id',
       [addressId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Monitored address not found' });
     }
-    
+
     logger.info(`Address removed from monitoring: ${addressId}`);
     res.status(204).end();
   } catch (error) {
@@ -253,28 +299,28 @@ router.delete('/addresses/:addressId', apiKeyAuth, requirePermission('write'), a
 router.post('/contracts', apiKeyAuth, requirePermission('write'), async (req: Request, res: Response) => {
   try {
     const { address, name, description, contract_type } = req.body;
-    
+
     if (!address) {
       return res.status(400).json({ error: 'Contract address is required' });
     }
-    
+
     // Validate the address by checking if it exists on the blockchain
     try {
       await blockfrostService.getAddressInfo(address);
     } catch (error) {
       return res.status(400).json({ error: 'Invalid Cardano address' });
     }
-    
+
     // Check if contract is already being monitored
     const existingResult = await query(
       'SELECT id FROM monitored_contracts WHERE address = $1',
       [address]
     );
-    
+
     if (existingResult.rows.length > 0) {
       return res.status(409).json({ error: 'Contract is already being monitored', id: existingResult.rows[0].id });
     }
-    
+
     // Add the contract to monitoring
     const result = await query(
       `INSERT INTO monitored_contracts (address, name, description, contract_type, created_by)
@@ -288,7 +334,7 @@ router.post('/contracts', apiKeyAuth, requirePermission('write'), async (req: Re
         (req as AuthenticatedRequest).apiKey?.id
       ]
     );
-    
+
     logger.info(`Contract added to monitoring: ${address}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -346,7 +392,7 @@ router.get('/contracts', apiKeyAuth, async (req: Request, res: Response) => {
        ORDER BY created_at DESC`,
       []
     );
-    
+
     res.json(result.rows);
   } catch (error) {
     logger.error('Error listing monitored contracts:', error);
@@ -383,17 +429,17 @@ router.get('/contracts', apiKeyAuth, async (req: Request, res: Response) => {
 router.delete('/contracts/:contractId', apiKeyAuth, requirePermission('write'), async (req: Request, res: Response) => {
   try {
     const { contractId } = req.params;
-    
+
     // Mark contract as inactive (don't actually delete it)
     const result = await query(
       'UPDATE monitored_contracts SET is_active = false WHERE id = $1 RETURNING id',
       [contractId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Monitored contract not found' });
     }
-    
+
     logger.info(`Contract removed from monitoring: ${contractId}`);
     res.status(204).end();
   } catch (error) {
