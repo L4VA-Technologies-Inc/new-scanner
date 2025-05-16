@@ -64,7 +64,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   logger.error('Unhandled error:', err);
   res.status(500).json({ error: 'An unexpected error occurred' });
 });
-
 // Initialize the application
 const startApp = async () => {
   try {
