@@ -1,4 +1,4 @@
-name: Deploy SCANNER
+name: Deploy Scanner
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "."
-          target: "~/apps/l4va-scanner"
+          target: "~/apps/new-scanner"
 
       - name: Execute deploy commands
         uses: appleboy/ssh-action@master
@@ -27,5 +27,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/apps
-            docker compose build l4va-scanner
-            docker compose up -d l4va-scanner
+            docker compose build new-scanner
+            docker compose up -d new-scanner
