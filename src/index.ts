@@ -71,27 +71,27 @@ const startApp = async () => {
     // Run database migrations
     await runMigrations();
     logger.info('Database migrations applied successfully');
-    
+
     // Initialize the database
     await initializeDatabase();
     logger.info('Database initialized successfully');
-    
+
     // Start the blockchain monitoring service
     await blockchainMonitor.initializeMonitoring();
     logger.info('Blockchain monitoring service started');
-    
+
     // Start the webhook processor
     webhookProcessor.startWebhookProcessor();
     logger.info('Webhook processor started');
-    
+
     // Start the server
     const port = config.server.port;
     // Create HTTP server from Express app
     const server = http.createServer(app);
-    
+
     // Initialize WebSocket server
     initializeWebSocket(server);
-    
+
     server.listen(port, () => {
       logger.info(`Cardano Blockchain Scanner service is running on port ${port}`);
       logger.info(`Environment: ${config.env}`);
