@@ -1,5 +1,20 @@
 name: Deploy Scanner
 
+- name: 🔍 Debug secrets (safe output)
+    run: | 
+      echo "🔑 SSH_PRIVATE_KEY (first 2 lines):"
+      echo "${{ secrets.SSH_PRIVATE_KEY }}" | head -n 2
+      echo "..."
+      echo "${{ secrets.SSH_PRIVATE_KEY }}" | tail -n 2
+      echo ""
+      
+      echo "🌐 SSH_HOST:"
+      echo "${{ secrets.SSH_HOST }}"
+      echo ""
+      
+      echo "👤 SSH_USERNAME:"
+      echo "${{ secrets.SSH_USERNAME }}"
+
 on:
   push:
     branches: [ main ]
