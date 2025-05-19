@@ -62,7 +62,7 @@ if [ ! -f ".env" ]; then
   cat > .env << EOL
 NODE_ENV=development
 PORT=3000
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/cardano_scanner
+DATABASE_URL=postgres://nest_user:nest_password@localhost:5432/cardano_scanner
 JWT_SECRET=default_jwt_secret_for_development_only
 BLOCKFROST_API_KEY=your_blockfrost_api_key_here
 BLOCKFROST_NETWORK=preprod
@@ -80,15 +80,15 @@ fi
 echo "Checking database connection..."
 if command_exists psql; then
   DB_URL=$(grep DATABASE_URL .env | cut -d '=' -f 2)
-  
+
   # Extract database name from URL
   DB_NAME=$(echo $DB_URL | awk -F'/' '{print $NF}' | awk -F'?' '{print $1}')
-  
+
   # Extract host, port, user from URL (simplified, assumes standard format)
   DB_HOST=$(echo $DB_URL | awk -F'@' '{print $2}' | awk -F':' '{print $1}')
   DB_PORT=$(echo $DB_URL | awk -F':' '{print $NF}' | awk -F'/' '{print $1}')
   DB_USER=$(echo $DB_URL | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
-  
+
   # Check if database exists
   if PGPASSWORD=postgres psql -h $DB_HOST -p $DB_PORT -U $DB_USER -lqt | cut -d \| -f 1 | grep -qw $DB_NAME; then
     echo "✅ Database '$DB_NAME' already exists"
@@ -123,7 +123,7 @@ if command_exists lsof; then
     echo "You have a few options:"
     echo "  1. Kill the existing process: kill -9 $PORT_IN_USE"
     echo "  2. Use a different port by updating the PORT value in .env"
-    
+
     read -p "Would you like to use a different port? (y/n): " USE_DIFFERENT_PORT
     if [[ $USE_DIFFERENT_PORT == "y" ]]; then
       read -p "Enter a new port number: " NEW_PORT
