@@ -13,6 +13,7 @@ export const runMigrations = async (): Promise<void> => {
     connectionString: config.database.url,
   });
 
+
   try {
     // Create migrations table if it doesn't exist
     await pool.query(`
@@ -49,9 +50,9 @@ export const runMigrations = async (): Promise<void> => {
       for (const file of migrationFiles) {
         if (!appliedMigrations.has(file)) {
           logger.info(`Applying migration: ${file}`);
-          
+
           const migrationSQL = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-          
+
           await client.query('BEGIN');
           try {
             await client.query(migrationSQL);
