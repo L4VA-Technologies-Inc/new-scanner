@@ -48,7 +48,6 @@ setupSwagger(app);
  *       500:
  *         description: Service is unhealthy or an error occurred
  */
-// Health check endpoint - moved to src/api/routes/health.ts
 // app.get('/health', (req, res) => {
 //   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 // });
