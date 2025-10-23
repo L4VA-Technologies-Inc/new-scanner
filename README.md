@@ -18,7 +18,7 @@ A daemon service that monitors specified wallets and smart contracts on the Card
 - **API Framework**: Express.js
 - **Authentication**: JWT-based authentication with API keys
 - **Testing**: Jest for unit and integration tests
-- **Deployment**: Docker and Docker Compose
+- **Deployment**: Docker and Docker Compose.
 
 ## Prerequisites
 
