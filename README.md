@@ -8,7 +8,7 @@ A daemon service that monitors specified wallets and smart contracts on the Card
 - **Webhook Notifications**: Receive notifications when monitored events occur
 - **Comprehensive API**: Interact with the Cardano blockchain through a RESTful API
 - **Flexible Event Filtering**: Configure which events trigger notifications
-- **API Key Authentication**: Secure access with API keys and granular permissions
+- **API Key Authentication**: Secure access with API keys and granular permissions.
 
 ## Technology Stack
 
